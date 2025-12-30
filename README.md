@@ -1,192 +1,139 @@
-# 📦 Shopping Cart Analysis & Case Study
+# 📦 Customer Segmentation from Association Rules
 
-Dự án phân tích dữ liệu bán lẻ nhằm khám phá mối quan hệ giữa các sản phẩm thường được mua cùng nhau, sử dụng kỹ thuật **Association Rule Mining (Apriori)**.  
-Project triển khai pipeline đầy đủ từ **xử lý dữ liệu → phân tích → khai thác luật → trực quan hóa → insight kinh doanh**.
+Dự án này tập trung vào việc **kết hợp khai phá luật kết hợp (Association Rule Mining)** và  
+**phân cụm khách hàng (Clustering)** nhằm chuyển dữ liệu giao dịch bán lẻ thành  
+**các phân khúc khách hàng có ý nghĩa hành động cho marketing**.
+
+Pipeline được xây dựng theo hướng:
+**Luật kết hợp → Đặc trưng hành vi → Phân cụm → Diễn giải → Chiến lược marketing**
 
 ---
 
 ## 👥 Thông tin Nhóm
-- **Nhóm:** Nhóm 9
+- **Nhóm:** …
 - **Thành viên:**
-  - Trần Trường Giang
-  - Lưu Khoa Bằng
   - Nguyễn Đức Dương
-- **Chủ đề :** **5.3.2.3 – Đánh giá luật theo Lift và giá trị kinh doanh**
-  - Xếp hạng luật theo Lift
-  - Phân loại luật theo Support / Confidence / Lift
-  - Đề xuất chiến lược marketing tương ứng
+  - Nguyễn Mạnh Cường
+  - Nguyễn Đoàn Ngọc Linh
+- **Môn học:** Data Mining  
+- **Giảng viên:** Lê Thị Thùy Trang
 - **Dataset:** Online Retail (UCI Machine Learning Repository)
 
 ---
 
-## 🎯 Mục tiêu
-Hiểu rõ hành vi mua sắm của khách hàng, từ đó:
-- Phát hiện các cặp sản phẩm thường được mua cùng nhau
-- Hỗ trợ tạo combo & gợi ý mua kèm (cross-selling)
-- Cá nhân hóa marketing
-- Tối ưu bố trí sản phẩm trong cửa hàng
-- Gia tăng giá trị giỏ hàng
+## 🎯 Mục tiêu Dự án
+Sau khi hoàn thành dự án, nhóm có thể:
+1. Hiểu quy trình kết hợp giữa **khai phá luật** và **phân cụm**.
+2. Trích xuất đặc trưng hành vi từ **luật kết hợp**.
+3. Áp dụng các thuật toán phân cụm (K-Means, mở rộng).
+4. Trực quan hóa và diễn giải các cụm khách hàng.
+5. Đề xuất **chiến lược marketing cụ thể** cho từng phân khúc.
 
 ---
 
-## 📝 Quy trình Thực hiện
-1. Làm sạch dữ liệu & xử lý giá trị lỗi
-2. Xây dựng **basket matrix (transaction × product)**
-3. Khai phá **Frequent Itemsets**
-4. Sinh **Association Rules** bằng Apriori
-5. Trực quan hóa kết quả
-6. Phân tích insight & đề xuất hành động kinh doanh
+## 🔁 Pipeline Thực hiện
+
+1. **Tiền xử lý & Khai phá luật**
+   - Làm sạch dữ liệu giao dịch
+   - Sinh luật bằng Apriori / FP-Growth
+   - Lọc luật theo `support`, `confidence`, `lift`
+
+2. **Rule-based Feature Engineering**
+   - Mỗi luật tương ứng một feature
+   - Khách hàng thỏa antecedent → kích hoạt feature
+   - Hỗ trợ:
+     - Feature nhị phân
+     - Feature có trọng số (lift / lift × confidence)
+
+3. **Ghép RFM (Tuỳ chọn)**
+   - Recency – Frequency – Monetary
+   - Chuẩn hóa dữ liệu để tạo vector đặc trưng cuối
+
+4. **Phân cụm khách hàng**
+   - Thuật toán: K-Means
+   - Chọn số cụm K bằng Silhouette / Elbow
+
+5. **Trực quan hóa & Diễn giải**
+   - Giảm chiều bằng PCA / SVD
+   - Profiling cụm theo:
+     - Quy mô
+     - RFM
+     - Luật nổi bật
+
+6. **Đề xuất chiến lược marketing**
+   - Cross-sell / Bundle
+   - Upsell
+   - Chăm sóc VIP
+   - Kích hoạt khách hàng ngủ đông
 
 ---
 
-## 🧹 Tiền xử lý Dữ liệu
+## 🧩 Feature Engineering Strategy
 
-**Các bước làm sạch chính:**
-- Loại bỏ sản phẩm không có mô tả
-- Loại bỏ hóa đơn bị hủy (`InvoiceNo` bắt đầu bằng `"C"`)
-- Loại bỏ giao dịch có `Quantity ≤ 0` hoặc `UnitPrice ≤ 0`
+### 🔹 Baseline
+- Feature nhị phân theo luật
+- 1 = khách hàng thỏa luật
+- 0 = không thỏa
 
-**Thống kê sau tiền xử lý (UK):**
-- Số giao dịch: **~397,924**
-- Số sản phẩm duy nhất: **~4,372**
-- Số khách hàng: **~4,372**
+### 🔹 Nâng cao
+- Feature luật có trọng số (lift hoặc lift × confidence)
+- Ghép thêm RFM
+- Chuẩn hóa dữ liệu trước phân cụm
 
----
-
-## 🔍 Áp dụng Thuật toán Apriori
-
-**Tham số sử dụng:**
-- `min_support = 0.01`
-- `min_confidence = 0.3`
-- `min_lift = 1.2`
-
-**Kết quả:**
-- Tổng số luật sinh ra: **218**
-- Số luật sau lọc: **175**
-  - Đáp ứng đồng thời Support, Confidence và Lift
+👉 Thực hiện **so sánh có hệ thống** giữa các cấu hình:
+- Rule-only vs Rule + RFM
+- Binary vs Weighted rules
+- Top-K luật nhỏ vs lớn
 
 ---
 
-## 📊 Trực quan hóa Kết quả
+## 📊 Đánh giá & Trực quan hóa
 
-### 📌 Biểu đồ 1 – Top 10 luật theo Lift
-*(Thay bằng hình ảnh trong báo cáo / notebook)*
-
-**Ý nghĩa:**
-- Lift cao cho thấy các sản phẩm được mua cùng nhau **nhiều hơn đáng kể so với ngẫu nhiên**
-- Phù hợp để:
-  - Tạo combo
-  - Gợi ý mua kèm
-  - Sắp xếp sản phẩm gần nhau
+- Chọn K bằng **Silhouette Score**
+- Scatter plot 2D (PCA / SVD)
+- Nhận xét mức độ tách cụm và chồng lấn
 
 ---
 
-### 📌 Biểu đồ 2 – Scatter plot: Support vs Confidence
-*(Thay bằng hình ảnh trong báo cáo / notebook)*
+## 🧠 Profiling & Insight Kinh doanh
 
-**Ý nghĩa:**
-- **Support cao + Confidence cao:** luật phổ biến, đáng tin cậy → áp dụng rộng
-- **Lift cao nhưng Support thấp:** luật mạnh nhưng niche → marketing cá nhân hóa
+Mỗi cụm được phân tích theo:
+- Số lượng khách hàng
+- Trung bình / trung vị RFM
+- Top luật được kích hoạt nhiều nhất
 
----
-
-## 💡 Insight Kinh doanh
-
-### 1️⃣ Tạo combo từ các luật Lift cao
-- **Luật:**  
-  `ROSES REGENCY TEACUP AND SAUCER → GREEN REGENCY TEACUP AND SAUCER`
-- **Chỉ số:**  
-  Lift = 14.16 | Confidence = 0.73 | Support = 0.0388
-- **Hành động:**  
-  Tạo combo 2 sản phẩm, bày cạnh nhau trên kệ.
+Từ đó:
+- Đặt tên cụm (EN + VI)
+- Mô tả persona (1 câu)
+- Đề xuất chiến lược marketing phù hợp
 
 ---
 
-### 2️⃣ Gợi ý mua thêm dựa trên Confidence cao
-- **Luật:**  
-  `GREEN REGENCY TEACUP AND SAUCER → ROSES REGENCY TEACUP AND SAUCER`
-- **Chỉ số:**  
-  Confidence = 0.75 | Lift = 14.16
-- **Hành động:**  
-  Gợi ý mua thêm qua POS, email, hoặc app bán hàng.
+## 🖥️ Dashboard (Streamlit)
 
----
-
-### 3️⃣ Nhận diện sản phẩm phổ biến trong giỏ hàng
-- **Luật:**  
-  `JUMBO BAG RED RETROSPOT → JUMBO BAG PINK POLKADOT`
-- **Chỉ số:**  
-  Support = 0.0436 | Lift = 6.31
-- **Hành động:**  
-  Đảm bảo tồn kho đầy đủ, tránh hết hàng.
-
----
-
-### 4️⃣ Tối ưu bố trí cửa hàng
-- **Luật:**  
-  `JUMBO BAG RED RETROSPOT → JUMBO STORAGE BAG SUKI`
-- **Chỉ số:**  
-  Lift = 5.75 | Confidence = 0.36
-- **Hành động:**  
-  Bày các sản phẩm này gần nhau để tăng xác suất mua kèm.
-
----
-
-### 5️⃣ Chiến dịch marketing kết hợp sản phẩm
-- **Luật:**  
-  `LUNCH BAG RED RETROSPOT → LUNCH BAG BLACK SKULL`
-- **Chỉ số:**  
-  Lift = 6.46 | Confidence = 0.44
-- **Hành động:**  
-  Gửi voucher hoặc email gợi ý combo.
-
----
-
-## 📈 Kết luận & Đề xuất
-
-- **Cross-selling / Upselling:** dựa trên các luật Lift cao
-- **Bố trí cửa hàng:** sắp xếp sản phẩm thường mua cùng nhau
-- **Marketing cá nhân hóa:** dựa trên Confidence
-- **Quản lý tồn kho:** ưu tiên các sản phẩm Support cao
-- **Chiến dịch niche:** luật Lift cao nhưng Support thấp
+- Đọc file output phân cụm
+- Lọc theo cluster
+- Xem top rules theo cụm
+- Gợi ý bundle / cross-sell
 
 ---
 
 ## 📂 Cấu trúc Project
 
 ```text
-shopping_cart_advanced_analysis/
+DATAMINING/
 ├── data/
 │   ├── raw/
-│   │   └── online_retail.csv
 │   └── processed/
-│       ├── cleaned_uk_data.csv
-│       ├── basket_bool.parquet
-│       ├── rules_apriori_filtered.csv
-│       └── rules_fpgrowth_filtered.csv
 │
 ├── notebooks/
-│   ├── preprocessing_and_eda.ipynb
-│   ├── basket_preparation.ipynb
-│   ├── apriori_modelling.ipynb
-│   ├── fp_growth_modelling.ipynb
-│   ├── weighted_rules.ipynb
-│   ├── compare_apriori_fpgrowth.ipynb
-│   └── runs/
-│       ├── preprocessing_and_eda_run.ipynb
-│       ├── basket_preparation_run.ipynb
-│       ├── apriori_modelling_run.ipynb
-│       ├── fp_growth_modelling_run.ipynb
-│       ├── weighted_rules_run.ipynb
-│       └── compare_apriori_fpgrowth_run.ipynb
+│   └── clustering_from_rules.ipynb
 │
 ├── src/
-│   └── apriori_library.py
+│   └── cluster_library.py
 │
 ├── dashboard/
-│   ├── app.py
-│   └── requirements.txt
+│   └── app.py
 │
-├── run_papermill.py
 ├── requirements.txt
 └── README.md
